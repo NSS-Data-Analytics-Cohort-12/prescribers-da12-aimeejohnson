@@ -64,7 +64,6 @@ ORDER BY total_claims DESC;
 
 --     c. **Challenge Question:** Are there any specialties that appear in the prescriber table that have no associated prescriptions in the prescription table?
 
-
 --     d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
 
 -- 3. 
@@ -144,13 +143,6 @@ FULL JOIN cbsa
 WHERE cbsa IS NULL
 ORDER BY population DESC;
 
-(SELECT county
-FROM fips_county
-	LEFT JOIN population
-	USING fipscounty)
-EXCEPT
-SELECT fipscounty
-
 --"SEVIER"	95523
 
 -- 6.
@@ -226,7 +218,7 @@ GROUP BY combo.npi,combo.drug_name
 ORDER BY total_claims DESC;
 
 --     c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
-SELECT combo.npi, combo.drug_name, COALESCE(prescription.total_claim_count,0) as total_claims
+SELECT combo.npi, combo.drug_name, COALESCE(SUM(prescription.total_claim_count),0) as total_claims
 FROM (SELECT prescriber.npi, drug.drug_name
 FROM prescriber
 CROSS JOIN drug
