@@ -64,6 +64,7 @@ ORDER BY total_claims DESC;
 
 --     c. **Challenge Question:** Are there any specialties that appear in the prescriber table that have no associated prescriptions in the prescription table?
 
+
 --     d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
 
 -- 3. 
@@ -109,7 +110,7 @@ CASE
 END AS drug_type
 FROM drug
 INNER JOIN prescription
-USING (drug_name)
+	USING (drug_name)
 GROUP BY drug_type
 ORDER BY total_cost DESC;
 
@@ -126,7 +127,7 @@ WHERE cbsaname LIKE '%TN';
 SELECT cbsaname, SUM(population) as total_population
 FROM cbsa
 INNER JOIN population
-USING (fipscounty)
+	USING (fipscounty)
 GROUP BY cbsaname
 ORDER BY total_population DESC;
 
@@ -137,11 +138,18 @@ ORDER BY total_population DESC;
 SELECT county, population
 FROM fips_county
 INNER JOIN population
-USING (fipscounty)
+	USING (fipscounty)
 FULL JOIN cbsa
-USING (fipscounty)
+	USING (fipscounty)
 WHERE cbsa IS NULL
 ORDER BY population DESC;
+
+(SELECT county
+FROM fips_county
+	LEFT JOIN population
+	USING fipscounty)
+EXCEPT
+SELECT fipscounty
 
 --"SEVIER"	95523
 
@@ -182,40 +190,51 @@ ORDER BY total_claims DESC;
 -- 7. The goal of this exercise is to generate a full list of all pain management specialists in Nashville and the number of claims they had for each opioid. **Hint:** The results from all 3 parts will have 637 rows.
 
 --     a. First, create a list of all npi/drug_name combinations for pain management specialists (specialty_description = 'Pain Management) in the city of Nashville (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y'). **Warning:** Double-check your query before running it. You will only need to use the prescriber and drug tables since you don't need the claims numbers yet.
+
+-- SELECT prescriber.npi, drug.drug_name
+-- FROM prescriber
+-- JOIN prescription
+-- 	USING (npi)
+-- JOIN drug
+-- 	USING (drug_name)
+-- WHERE prescriber.specialty_description = 'Pain Management'
+-- 	AND nppes_provider_city = 'NASHVILLE'
+-- 	AND drug.opioid_drug_flag = 'Y';
+
 SELECT prescriber.npi, drug.drug_name
 FROM prescriber
-INNER JOIN prescription
-	USING (npi)
-INNER JOIN drug
-	USING (drug_name)
+CROSS JOIN drug
 WHERE prescriber.specialty_description = 'Pain Management'
 	AND nppes_provider_city = 'NASHVILLE'
 	AND drug.opioid_drug_flag = 'Y';
 
-SELECT *
-FROM prescriber
-FULL JOIN(
-	SELECT *
-	FROM prescription
-	FULL JOIN drug
-	USING (drug_name)
-) USING (npi)
-WHERE specialty_description = 'Pain Management'
-	AND nppes_provider_city = 'NASHVILLE'
-	AND opioid_drug_flag = 'Y';
+--For each prescriber who meets the criteria, the join pairs them with every drug that meets the criteria. So if there are 10 prescribers that meet the filter, and 5 drugs that meet the filter, you will have 50 rows.
 
 --     b. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
-SELECT npi, drug_name,SUM(total_claim_count) AS total_count
+
+SELECT combo.npi, combo.drug_name, SUM(prescription.total_claim_count) as total_claims
+FROM (SELECT prescriber.npi, drug.drug_name
 FROM prescriber
-FULL JOIN(
-	SELECT *
-	FROM prescription
-	FULL JOIN drug
-	USING (drug_name)
-) USING (npi)
-WHERE specialty_description = 'Pain Management'
+CROSS JOIN drug
+WHERE prescriber.specialty_description = 'Pain Management'
 	AND nppes_provider_city = 'NASHVILLE'
-	AND opioid_drug_flag = 'Y'
-GROUP BY npi, drug_name
-ORDER BY total_count;
+	AND drug.opioid_drug_flag = 'Y'
+) AS combo
+LEFT JOIN prescription
+ON combo.npi = prescription.npi
+GROUP BY combo.npi,combo.drug_name
+ORDER BY total_claims DESC;
+
 --     c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
+SELECT combo.npi, combo.drug_name, COALESCE(prescription.total_claim_count,0) as total_claims
+FROM (SELECT prescriber.npi, drug.drug_name
+FROM prescriber
+CROSS JOIN drug
+WHERE prescriber.specialty_description = 'Pain Management'
+	AND nppes_provider_city = 'NASHVILLE'
+	AND drug.opioid_drug_flag = 'Y'
+) AS combo
+LEFT JOIN prescription
+ON combo.npi = prescription.npi
+GROUP BY combo.npi,combo.drug_name
+ORDER BY total_claims DESC;
