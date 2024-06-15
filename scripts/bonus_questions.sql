@@ -1,12 +1,12 @@
 -- 1. How many npi numbers appear in the prescriber table but not in the prescription table?
-SELECT COUNT(*)
-FROM(
-	SELECT npi
-	FROM prescriber
-	EXCEPT
-	SELECT npi
-	FROM prescription
-) as not_prescription;
+-- SELECT COUNT(*)
+-- FROM(
+-- 	SELECT npi
+-- 	FROM prescriber
+-- 	EXCEPT
+-- 	SELECT npi
+-- 	FROM prescription
+-- ) as not_prescription;
 
 SELECT COUNT(prescriber.npi)
 FROM prescriber
@@ -181,17 +181,3 @@ WHERE f.state = 'TN'
 GROUP BY f.state;
 
 --     b. Build off of the query that you wrote in part a to write a query that returns for each county that county's name, its population, and the percentage of the total population of Tennessee that is contained in that county.
-WITH tn AS (
-    SELECT SUM(p.population) AS total_population
-    FROM population p
-    INNER JOIN fips_county f
-    	ON p.fipscounty = f.fipscounty
-    WHERE f.state = 'TN'
-)
-SELECT f.county,p.population, 
-    (p.population / tn.total_population) * 100 AS county_percent
-FROM population p
-JOIN fips_county f
-USING (fipscounty)
-CROSS JOIN tn
-WHERE f.state = 'TN';
