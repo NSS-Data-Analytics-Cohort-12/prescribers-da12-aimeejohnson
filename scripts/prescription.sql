@@ -1,40 +1,23 @@
 -- 1. 
 --     a. Which prescriber had the highest total number of claims (totaled over all drugs)? Report the npi and the total number of claims.
-SELECT npi, total_claim_count
+
+SELECT prescription.npi, SUM(total_claim_count) as total_count
 FROM prescriber
 INNER JOIN prescription
 	USING (npi)
-ORDER BY total_claim_count DESC;
-
---1912011792	4538
-
--- Do we need to be summing the total claims? I think providers are only in the table once, but maybe?
--- SELECT prescription.npi, SUM(total_claim_count) as total_count
--- FROM prescriber
--- INNER JOIN prescription
--- 	USING (npi)
--- GROUP BY prescription.npi
--- ORDER BY total_count DESC;
+GROUP BY prescription.npi
+ORDER BY total_count DESC;
 
 -- -- 1881634483, 99707
 
 --     b. Repeat the above, but this time report the nppes_provider_first_name, nppes_provider_last_org_name,  specialty_description, and the total number of claims.
 
-SELECT CONCAT(nppes_provider_first_name,' ',nppes_provider_last_org_name) AS full_name, specialty_description, total_claim_count
+SELECT CONCAT(nppes_provider_first_name,' ',nppes_provider_last_org_name) AS full_name, specialty_description, SUM(total_claim_count) as total_claims
 FROM prescriber
 INNER JOIN prescription
-	USING (npi)
-ORDER BY total_claim_count DESC;
-
---"DAVID COFFEY"	"Family Practice"	4538
-
---Again, the results are different if we are totaling the claims.
--- SELECT CONCAT(nppes_provider_first_name,' ',nppes_provider_last_org_name) AS full_name, specialty_description, SUM(total_claim_count) as total_claims
--- FROM prescriber
--- INNER JOIN prescription
--- 	USING(npi)
--- GROUP BY full_name,specialty_description
--- ORDER BY total_claims DESC;
+	USING(npi)
+GROUP BY full_name,specialty_description
+ORDER BY total_claims DESC;
 
 -- "BRUCE PENDLEY"	"Family Practice" 99707
 
@@ -64,7 +47,42 @@ ORDER BY total_claims DESC;
 
 --     c. **Challenge Question:** Are there any specialties that appear in the prescriber table that have no associated prescriptions in the prescription table?
 
+-- SELECT
+-- 	prescriber.specialty_description,
+-- 	COUNT(prescription.*)
+-- FROM prescriber
+-- LEFT JOIN prescription
+-- 	ON prescriber.npi = prescription.npi
+-- GROUP BY 1
+-- HAVING COUNT(prescription.*) = 0
+-- ORDER BY 2, 1;
+
+-- SELECT prescriber.specialty_description, COUNT(prescription.drug_name) AS num_prescriptions
+-- FROM prescriber
+-- LEFT JOIN prescription
+-- USING(npi)
+-- GROUP BY prescriber.specialty_description
+-- HAVING COUNT(prescription.drug_name) = 0;
+
+-- SELECT DISTINCT specialty_description
+-- FROM prescriber
+-- WHERE specialty_description IS NOT IN
+	
 --     d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
+
+-- SELECT specialty_description,
+-- 	SUM(CASE WHEN opioid_drug_flag = 'Y' THEN total_claim_count
+-- 		ELSE 0)
+-- 	END) as opioid_claims,
+-- 	SUM (total_claim_count) AS total_claims.
+-- 	SUM(CASE WHEN opioid_drug_flag = 'Y' THEN total_claims_count
+-- 		ELSE 0)
+-- 	END) * 100/SUM(total_claim_count) AS opioid_percentage
+-- FROM prescriber
+-- INNER JOIN prescription
+-- 	USING (npi)
+-- INNER JOIN drug
+-- 	USING (drug_name)
 
 -- 3. 
 --     a. Which drug (generic_name) had the highest total drug cost?
@@ -117,9 +135,15 @@ ORDER BY total_cost DESC;
 
 -- 5. 
 --     a. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
-SELECT COUNT(*)
+-- SELECT COUNT(*)
+-- FROM cbsa
+-- WHERE cbsaname LIKE '%TN';
+
+SELECT COUNT(cbsa)
 FROM cbsa
-WHERE cbsaname LIKE '%TN';
+LEFT JOIN fips_county
+USING (fipscounty)
+WHERE state = 'TN';
 
 -- 33
 --     b. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
@@ -216,6 +240,16 @@ LEFT JOIN prescription
 ON combo.npi = prescription.npi
 GROUP BY combo.npi,combo.drug_name
 ORDER BY total_claims DESC;
+
+
+-- SELECT prescriber.npi,drug.drug_name, total_claim_count
+-- FROM prescriber
+-- CROSS JOIN drug
+-- 	LEFT JOIN prescription
+-- 	ON prescription.npi = prescription.npi AND drug.drug_name = prescription.drug_name
+-- WHERE prescriber.specialty_description = 'Pain Management'
+-- 	AND prescriber.nppes_provider_city = 'NASHVILLE'
+-- 	AND drug.opioid_drug_flag = 'Y';
 
 --     c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
 SELECT combo.npi, combo.drug_name, COALESCE(SUM(prescription.total_claim_count),0) as total_claims
